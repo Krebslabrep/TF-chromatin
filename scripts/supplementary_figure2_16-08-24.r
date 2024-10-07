@@ -18,7 +18,7 @@ CA_loci_df = process.CA.df(x = chromatin.influence.df, cre.annotation = chromHMM
   ) %>%
   mutate(TF = ifelse(ChIP_annotation == "unbound", "unbound", TF))
 
-# C
+# A
 x = process.CA.df(x = chromatin.influence.df, cre.annotation = chromHMM, chip.thr = ChIP_thresholds_dictionary_lenient)
 
 x %>%
@@ -35,17 +35,17 @@ x %>%
   spread(TF,  CA_regulatory, drop = TRUE) %>%
   column_to_rownames("ChIP_bin") %>%
   as.matrix() -> mat
-  ComplexHeatmap::Heatmap(
-    matrix = mat, cluster_columns = FALSE, cluster_rows = FALSE, name = "CA frequency (%)",
-    col = circlize::colorRamp2(colors = rev(colorspace::sequential_hcl(n = 100, palette = "lajolla", rev = FALSE)), breaks = seq(100)),
-    row_names_side = "left", column_names_rot = 90, na_col = "white", border = TRUE, rect_gp = gpar(col = "black", lwd = 0.25), 
-    width = ncol(mat)*unit(7, "mm"), height = nrow(mat)*unit(2, "mm"), row_labels = c(100, rep("", nrow(mat)-2), min(as.integer(rownames(mat)))), row_title = "ChIP-seq/-nexus percentile"
-  ) -> pl
+ComplexHeatmap::Heatmap(
+  matrix = mat, cluster_columns = FALSE, cluster_rows = FALSE, name = "CA frequency (%)",
+  col = circlize::colorRamp2(colors = rev(colorspace::sequential_hcl(n = 100, palette = "lajolla", rev = FALSE)), breaks = seq(100)),
+  row_names_side = "left", column_names_rot = 90, na_col = "white", border = TRUE, rect_gp = gpar(col = "black", lwd = 0.25), 
+  width = ncol(mat)*unit(7, "mm"), height = nrow(mat)*unit(2, "mm"), row_labels = c(100, rep("", nrow(mat)-2), min(as.integer(rownames(mat)))), row_title = "ChIP-seq/-nexus percentile"
+) -> pl
 pdf(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/figs2c_", Sys.Date(), ".pdf"), width = 7, height = 4)
 pl
 dev.off()
 
-# D
+# B
 TFBSs[filter(CA_loci_df, TF != "unbound")$TF.name] %>%
   SingleMoleculeFootprinting::Arrange_TFBSs_clusters(., add.single.TFs = FALSE, max_cluster_width = 300) -> TFBS.clusters
 TFBS.cluster.compositions = unlist(TFBS.clusters$ClusterComposition)
@@ -124,4 +124,28 @@ Heatmap(
 ) -> pl
 pdf(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/figs2b_", Sys.Date(), ".pdf"), width = 4, height = 5)
 pl
+dev.off()
+
+# F
+partition.collapsing.dictinary = split(1:12,1:12)[c(1,5,4,3,7,8,12,11,10,2,6,9)]
+patch.single.site.plots(
+  interpretable.master.table = data.frame(TFBS.cluster = "GenomicTile_31171557", Sample = "SMF_MM_TKO_DE_"), rank = 1, k = 12,
+  pool.replicates = TRUE, resize.size = 500, partition.collapsing.dict = partition.collapsing.dictinary, 
+  data.type = "WT_bait.capture", remove.TFBS.labels = TRUE
+) -> pl
+pl$chromatin.influence.df %>% mutate(ChIP = 0) %>% process.CA.df(., chromHMM, ChIP_thresholds_dictionary_lenient) # 68% | 117bp
+png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig3f_", Sys.Date(), ".png"), width = 25, height = 20, units = "cm", res = 300)
+pl$pl
+dev.off()
+
+# G
+partition.collapsing.dictinary = split(1:8,1:8)[c(4,5,3,6,8,7,1,2)]
+patch.single.site.plots(
+  interpretable.master.table = data.frame(TFBS.cluster = "GenomicTile_53147164", Sample = "SMF_MM_TKO_DE_"), rank = 1, k = 12,
+  pool.replicates = TRUE, resize.size = 500, partition.collapsing.dict = partition.collapsing.dictinary, 
+  data.type = "WT_bait.capture", remove.TFBS.labels = TRUE
+) -> pl
+pl$chromatin.influence.df %>% mutate(ChIP = 0) %>% process.CA.df(., chromHMM, ChIP_thresholds_dictionary_lenient) # 100% | 228bp
+png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig3g_", Sys.Date(), ".png"), width = 25, height = 20, units = "cm", res = 300)
+pl$pl
 dev.off()

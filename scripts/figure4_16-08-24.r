@@ -40,7 +40,7 @@ f1_smf_proseq %>%
   ylab("-log10(p-adj)") +
   theme_bw() +
   theme(text = element_text(size = 18),  legend.position = c(.8,.88), legend.background = element_blank(), legend.title = element_blank()) -> pl
-ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig6a_", Sys.Date(), ".pdf"), pl, width = 3.5, height = 3.5)
+ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig4a_", Sys.Date(), ".pdf"), pl, width = 3.5, height = 3.5)
 
 # B
 f1_smf_proseq %>%
@@ -63,7 +63,7 @@ pl.df %>%
   scale_y_continuous(breaks = c(-6,0,4)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), text = element_text(size = 18)) -> pl
-ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig6b_", Sys.Date(), ".pdf"), pl, width = 5, height = 4)
+ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig4b_", Sys.Date(), ".pdf"), pl, width = 5, height = 4)
 pl.df %>%
   filter(locus != "Ctcf") %>%
   group_by(locus, accessibility.delta.bins) %>%
@@ -93,7 +93,7 @@ pl$chromatin.influence.df[2,] %>%
 filter(pl.df, TF.name == "TFBS_2708927", Sample == "STKO")$log2FoldChange # -0.9711348 (PROseq)
 filter(pl.df, TF.name == "TFBS_2708927", Sample == "STKO")$PROseq.padj # 0.002205783 (PROseq)
 filter(pl.df, TF.name == "TFBS_2708927", Sample == "STKO")$p.adj # 5.942256e-05 (SMF)
-png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig6c_", Sys.Date(), ".png"), width = 30, height = 30, units = "cm", res = 300)
+png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig4c_", Sys.Date(), ".png"), width = 30, height = 30, units = "cm", res = 300)
 pl$pl
 dev.off()
 
@@ -165,7 +165,7 @@ plot_genomic_track(
 # ) -> RNAseq_track
 p_final <- ATAC_track + Klf4_track + MNase_track + PROseq_track +
   plot_layout(ncol = 1, heights = c(1/3, 1/6, 1/6, 1/3))
-pdf(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig6b_tracks_", Sys.Date(), ".pdf"), width = 9, height = 5)
+pdf(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig4b_tracks_", Sys.Date(), ".pdf"), width = 9, height = 5)
 p_final
 dev.off()
 
@@ -183,6 +183,6 @@ plot_genomic_track(
   normalise = FALSE, 
   plot.coordinates = TRUE
 ) -> PROseq_track
-pdf(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig6b_tracks_inlet_", Sys.Date(), ".pdf"), width = 3, height = 2)
+pdf(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig4b_tracks_inlet_", Sys.Date(), ".pdf"), width = 3, height = 2)
 PROseq_track
 dev.off()

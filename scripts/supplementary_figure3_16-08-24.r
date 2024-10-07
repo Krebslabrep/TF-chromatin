@@ -64,7 +64,7 @@ CA_loci_df %>%
   mutate(
     cast = plyranges::count_overlaps(IRanges::resize(GenomicTiles[TFBS.cluster], 300, "center"), SNPs$Cast),
     spret = plyranges::count_overlaps(IRanges::resize(GenomicTiles[TFBS.cluster], 300, "center"), SNPs$Spret)
-    ) %>%
+  ) %>%
   mutate(count = ifelse(Sample == "CTKO", cast, spret)) %>%
   dplyr::select(-cast, -spret)-> pl.df
 medians = c(median(filter(pl.df, Sample == "CTKO")$count), median(filter(pl.df, Sample == "STKO")$count))
@@ -116,6 +116,77 @@ pl.df %>% ggplot() +
 ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/figs3c_", Sys.Date(), ".pdf"), pl, height = 4, width = 5)
 
 # D-L: see /g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/discarded_scripts/supplementary_figure3_21.02.23.R
+
+# B
+CA_loci_df %>%
+  filter(TF == "Ctcf", tot.R >= 100, tot.A >= 100, motif.change == "l.o.f.") %>%
+  # filter(Sample == "STKO") %>% I tried until rank 11. Nothing useful
+  # arrange(CA.delta) -> ctcf.pl.df
+  filter(TFBS.cluster == "GenomicTile_41709602", Sample == "CTKO") -> ctcf.pl.df #  GenomicTile_32578421 [STKO, partial]
+log2(TFBSs["TFBS_7406270"]$Cast.absScore/TFBSs["TFBS_7406270"]$BL6.absScore) # -2.065426
+
+partition.collapsing.dictionary = split(1:12,1:12)[c(10,11,12,9,8,1,6,2,7,5,3,4)]
+patch.single.site.plots(
+  interpretable.master.table = ctcf.pl.df, rank = 1, k = 12,
+  pool.replicates = TRUE, resize.size = 500, partition.collapsing.dict = partition.collapsing.dictionary, 
+  data.type = "F1_bait.capture", remove.TFBS.labels = TRUE, patch.version = 2
+) -> pl
+max(pl$chromatin.influence.df$acc.width.distro[[1]]) # 198bp
+pl$chromatin.influence.df %>%
+  mutate(CA.R = (accessible.R/tot.R)*100, CA.A = (accessible.A/tot.A)*100) %>%
+  unnest(c(acc.width.distro, acc.read.count.distro.R, acc.read.count.distro.A)) %>%
+  filter(acc.width.distro >= 100) %>%
+  group_by(TF.name, TF, tot.R, tot.A, CA.R, CA.A) %>%
+  summarise(CA.wide.R = sum(acc.read.count.distro.R), CA.wide.A = sum(acc.read.count.distro.A), .groups = "drop") %>%
+  mutate(CA.wide.R = CA.wide.R/tot.R*100, CA.wide.A = CA.wide.A/tot.A*100) %>%
+  mutate(CA.delta = CA.wide.A - CA.wide.R) # R: 86%, A: 26%
+png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig3b_", Sys.Date(), ".png"), width = 30, height = 30, units = "cm", res = 300)
+pl$pl
+dev.off()
+
+RegionOfInterest = IRanges::resize(GenomicTiles["GenomicTile_41709602"], 9000, "center")
+plot_genomic_track(
+  # sampleSheet = "/g/krebs/barzaghi/analyses/nf-core_runs/130923_BL6_Spret_F1_ATAC/aln_merged_deduplicated/samplesheet_PooledReplicates.txt",
+  # samples = "BL6_Spret_F1",
+  sampleSheet = "/g/krebs/barzaghi/HTS/ATAC-seq/Heard_NatGen_2017/aln/Qinput_male.txt",
+  samples = "male_R1",
+  RegionOfInterest = RegionOfInterest,
+  allelic = TRUE,
+  tile.width = 200,
+  tile.step = 25,
+  max.y.lim = 10,
+  color = c("black", "sienna"), 
+  y.labs = c("Bl6 ATAC", "Cast ATAC"),
+  delta = FALSE,
+  normalise = FALSE
+) -> ATAC_track
+plot_genomic_track(
+  sampleSheet = ChIP_data_dictionary$Ctcf,
+  samples = "Ctcf",
+  RegionOfInterest = RegionOfInterest,
+  allelic = FALSE,
+  tile.width = 200,
+  tile.step = 25,
+  max.y.lim = 2000,
+  color = "black", 
+  y.labs = "Ctcf"
+) -> Ctcf_track
+plot_genomic_track(
+  sampleSheet = "/g/krebs/barzaghi/HTS/MNase/Qinput.txt",
+  samples = "MNase_mESC_129S6/SvEvTac_WT",
+  RegionOfInterest = RegionOfInterest,
+  allelic = FALSE,
+  tile.width = 200, 
+  tile.step = 25,
+  max.y.lim = 160,
+  color = "black", 
+  y.labs = "MNAse"
+) -> MNase_track
+p_final <- ATAC_track + Ctcf_track + MNase_track +
+  plot_layout(ncol = 1, heights = c(1/2, 1/4, 1/4))
+pdf(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig3b_tracks_", Sys.Date(), ".pdf"), width = 9, height = 4)
+p_final
+dev.off()
 
 # M
 CA_loci_df %>%
