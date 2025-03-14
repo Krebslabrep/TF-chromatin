@@ -1,9 +1,7 @@
 library(tidyverse)
-source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
-source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+source("./scripts/functions/utils.r")
+source("./scripts/functions/source_FootprintCharter_functions.r")
 detach("package:plyranges")
-
-setwd("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/")
 
 chromHMM = Load.chromHMM(GenomicTiles = TRUE)
 GenomicTiles = Load.GenomicTiles(tiles.width = 80)
@@ -21,16 +19,15 @@ CA_loci_df = qs::qread("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/
 # A
 CA_loci_df %>%
   group_by(TF) %>% filter(n() > 30) %>% ungroup() %>%
-  mutate(fill.variable = ifelse(TF == "unbound", "inactive", "active")) %>%
+  mutate(fill.variable = ifelse(TF == "unbound", "unbound", "bound")) %>%
   group_by(TF) %>% mutate(m = median(CA_regulatory)) %>% ungroup() %>% arrange(m) %>% mutate(TF = factor(TF, levels = unique(TF))) %>%
   ggplot(aes(TF, CA_regulatory, fill = fill.variable)) +
   geom_boxplot() +
-  ggpubr::stat_compare_means(method = "wilcox", method.args = list(alternative = "greater"), label = "p.signif", size = 5, ref.group = "unbound", label.y = rep(c(100,103),9)) +
-  xlab(NULL) + ylab("accessibility f (%) \n (active molecules)") +
-  scale_fill_manual(breaks = c("inactive", "active"), values = c("transparent", "grey")) +
+  xlab(NULL) + ylab("accessibility f (%)") +
+  scale_fill_manual(breaks = c("unbound", "bound"), values = c("transparent", "grey")) +
   scale_y_continuous(breaks = c(0,50,100)) +
   theme_bw() +
-  theme(axis.text.x = element_text(angle = 90, hjust=1, vjust=.5), text = element_text(size = 18), legend.title = element_blank()) -> pl
+  theme(axis.text.x = element_text(angle = 90, hjust=1, vjust=.5), text = element_text(size = 18), legend.title = element_blank(), legend.position = "bottom") -> pl
 ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2a_", Sys.Date(), ".pdf"), pl, width = 9, height = 5.5)
 CA_loci_df %>%
   filter(
@@ -85,42 +82,112 @@ full_join(
   scale_y_continuous(breaks = c(0,50,100), limits = c(0,100)) +
   scale_x_continuous(breaks = c(0,100,200,300), limits = c(0,300)) +
   ggbreak::scale_x_break(breaks = c(5,100)) +
-  xlab("average width (bp) \n (active molecules)") +
+  xlab("average width (bp)") +
   ylab("accessibility f (%) \n (active molecules)") +
   colorspace::scale_color_discrete_sequential(palette = "Emrld", rev = TRUE) +
   theme_bw() +
   theme(text = element_text(size = 18), axis.text.x.top = element_blank(), axis.ticks.x.top = element_blank()) -> pl
 ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2b_", Sys.Date(), ".pdf"), pl, width = 4.5, height = 4.5, onefile=FALSE)
 
-# full_join(
-#   CA_loci_df %>% filter(ChIP_annotation == "bound"),
-#   TFBS.cluster.compositions %>%
-#     data.frame() %>%
-#     dplyr::select(absolute.idx, cluster.id) %>%
-#     dplyr::rename("TF.name" = "absolute.idx"),
-#   by = "TF.name"
-# ) %>%
-#   mutate(cluster.id = ifelse(is.na(cluster.id), TF.name, cluster.id)) %>%
-#   na.omit() %>%
-#   group_by(cluster.id) %>% mutate(nr.motifs = n()) %>% ungroup() %>%
-#   group_by(nr.motifs) %>% filter(n() > 100) %>%
-#   group_by(nr.motifs, TF) %>% summarise(n = n(), .groups = "drop") %>%
-#   group_by(nr.motifs) %>% mutate(N = sum(n)) %>% ungroup() %>%
-#   mutate(percentage = n/N*100) %>% dplyr::select(-n, -N) %>%
-#   spread(TF, percentage) %>%
-#   column_to_rownames("nr.motifs") %>%
-#   as.matrix() -> mat
-# mat[mat < 2] = NA
-# mat = mat[,colSums(is.na(mat)) < 6]
-# library(ComplexHeatmap)  
-# Heatmap(
-#   mat[8:1,], name = "percentage (%)", cluster_rows = FALSE, cluster_columns = FALSE, 
-#   col = circlize::colorRamp2(breaks = seq(100), colors = rev(colorspace::sequential_hcl(n = 100, palette = "RedOr", rev = FALSE))), na_col = "white",
-#   row_names_side = "left", border = TRUE, rect_gp = gpar(col = "black", lwd = 0.25), 
-#   width = ncol(mat)*unit(7, "mm"), height = nrow(mat)*unit(7, "mm"), row_title = "Nb motifs per CRE"
-#   )
-
 # C
+full_join(
+  CA_loci_df %>% filter(ChIP_annotation == "bound"),
+  TFBS.cluster.compositions %>%
+    data.frame() %>%
+    dplyr::select(absolute.idx, cluster.id) %>%
+    dplyr::rename("TF.name" = "absolute.idx"),
+  by = "TF.name"
+) %>%
+  mutate(cluster.id = ifelse(is.na(cluster.id), TF.name, cluster.id)) %>%
+  na.omit() %>%
+  group_by(cluster.id) %>% mutate(nr.motifs = n()) %>% ungroup() %>%
+  rbind(
+    ., 
+    CA_loci_df %>% 
+      filter(ChIP_annotation == "unbound") %>%
+      mutate(cluster.id = TF.name, nr.motifs = 0)
+  ) %>%
+  group_by(nr.motifs) %>% filter(n() > 100) %>% ungroup() -> x
+
+x %<>% filter(TF != "Ctcf")
+
+CollectCompositeData(
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/QuasR_input_files/QuasR_input_AllCanWGpooled_dprm_DE_only.txt", 
+  sample = "SMF_MM_TKO_DE_", 
+  genome = BSgenome.Mmusculus.UCSC.mm10, 
+  TFBSs = TFBSs[sample(filter(x, nr.motifs == 1)$TF.name, 3000)], 
+  window = 1000, 
+  coverage = 20, 
+  ConvRate.thr = NULL, 
+  cores = 16
+) -> CompositeData_1_motif
+
+CollectCompositeData(
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/QuasR_input_files/QuasR_input_AllCanWGpooled_dprm_DE_only.txt", 
+  sample = "SMF_MM_TKO_DE_", 
+  genome = BSgenome.Mmusculus.UCSC.mm10, 
+  TFBSs = TFBS.clusters$ClusterCoordinates[unique(filter(x, nr.motifs == 2)$cluster.id)], 
+  window = 1000, 
+  coverage = 20, 
+  ConvRate.thr = NULL, 
+  cores = 16
+) -> CompositeData_2_motifs
+
+CollectCompositeData(
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/QuasR_input_files/QuasR_input_AllCanWGpooled_dprm_DE_only.txt", 
+  sample = "SMF_MM_TKO_DE_", 
+  genome = BSgenome.Mmusculus.UCSC.mm10, 
+  TFBSs = TFBS.clusters$ClusterCoordinates[unique(filter(x, nr.motifs == 3)$cluster.id)], 
+  window = 1000, 
+  coverage = 20, 
+  ConvRate.thr = NULL, 
+  cores = 16
+) -> CompositeData_3_motifs
+
+CollectCompositeData(
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/QuasR_input_files/QuasR_input_AllCanWGpooled_dprm_DE_only.txt", 
+  sample = "SMF_MM_TKO_DE_", 
+  genome = BSgenome.Mmusculus.UCSC.mm10, 
+  TFBSs = TFBS.clusters$ClusterCoordinates[unique(filter(x, nr.motifs == 4)$cluster.id)], 
+  window = 1000, 
+  coverage = 20, 
+  ConvRate.thr = NULL, 
+  cores = 16
+) -> CompositeData_4_motifs
+
+CollectCompositeData(
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/QuasR_input_files/QuasR_input_AllCanWGpooled_dprm_DE_only.txt", 
+  sample = "SMF_MM_TKO_DE_", 
+  genome = BSgenome.Mmusculus.UCSC.mm10, 
+  TFBSs = TFBS.clusters$ClusterCoordinates[unique(filter(x, nr.motifs == 5)$cluster.id)], 
+  window = 1000, 
+  coverage = 20, 
+  ConvRate.thr = NULL, 
+  cores = 16
+) -> CompositeData_5_motifs
+
+rbind(
+  mutate(CompositeData_1_motif, nr.motifs = 1),
+  mutate(CompositeData_2_motifs, nr.motifs = 2),
+  mutate(CompositeData_3_motifs, nr.motifs = 3),
+  mutate(CompositeData_4_motifs, nr.motifs = 4),
+  mutate(CompositeData_5_motifs, nr.motifs = 5)
+) %>% distinct(TFBS_index)
+  mutate(nr.motifs = as.factor(nr.motifs)) %>% 
+  mutate(SMF = SMF*100) %>%
+  ggplot(aes(RelStart, SMF, color = nr.motifs)) +
+  geom_smooth(se = FALSE, method = "loess", span = .1) + 
+  ylim(c(0, 1)) + 
+  scale_y_continuous(breaks = c(0,50,100), limits = c(0,100)) +
+  scale_x_continuous(breaks = c(-500,-250,0,250,500), limits = c(-500,500)) +
+  xlab("Coord. relative to the motif cluster center") +
+  ylab("SMF (1- meth %)") +
+  colorspace::scale_color_discrete_sequential(palette = "Emrld", rev = TRUE) +
+  theme_bw() +
+  theme(text = element_text(size = 18), axis.text.x.top = element_blank(), axis.ticks.x.top = element_blank(), legend.position = "bottom") -> pl
+ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2c_", Sys.Date(), ".pdf"), pl, width = 4.5, height = 4.5, onefile=FALSE)
+
+# D
 rbind(
   full_join(
     CA_loci_df %>% filter(ChIP_annotation == "bound"),
@@ -165,9 +232,9 @@ rbind(
   colorspace::scale_color_discrete_sequential(palette = "Emrld", rev = TRUE) +
   theme_bw() +
   theme(text = element_text(size = 18), axis.text.x.top = element_blank(), axis.ticks.x.top = element_blank()) -> pl
-ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2c_", Sys.Date(), ".pdf"), pl, width = 4.5, height = 4.5, onefile=FALSE)
+ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2d_", Sys.Date(), ".pdf"), pl, width = 4.5, height = 4.5, onefile=FALSE)
 
-# D
+# E
 rbind(
   full_join(
     CA_loci_df %>% filter(ChIP_annotation == "bound"),
@@ -212,9 +279,9 @@ rbind(
   colorspace::scale_color_discrete_sequential(palette = "Emrld", rev = TRUE) +
   theme_bw() +
   theme(text = element_text(size = 18), axis.text.x.top = element_blank(), axis.ticks.x.top = element_blank()) -> pl
-ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2d_", Sys.Date(), ".pdf"), pl, width = 4.5, height = 4.5, onefile=FALSE)
+ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2e_", Sys.Date(), ".pdf"), pl, width = 4.5, height = 4.5, onefile=FALSE)
 
-# E
+# F
 partition.collapsing.dictinary = split(1:12,1:12)[c(12,1,10,6,7,4,3,2,11,5,8,9)]
 patch.single.site.plots(
   interpretable.master.table = data.frame(TFBS.cluster = "GenomicTile_11165737", Sample = "SMF_MM_TKO_DE_"), rank = 1, partition.collapsing.dict = partition.collapsing.dictinary,
@@ -222,11 +289,11 @@ patch.single.site.plots(
   data.type = "WT_bait.capture", remove.TFBS.labels = TRUE , plotting.TFBSs = TFBSs["TFBS_2201548"]
 ) -> pl
 process.CA.df(x = mutate(pl$chromatin.influence.df[1,], ChIP = NA), cre.annotation = chromHMM, chip.thr = ChIP_thresholds_dictionary_lenient) # 36%;23% | 178bp
-png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2e_", Sys.Date(), ".png"), width = 25, height = 20, units = "cm", res = 300)
+png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2f_", Sys.Date(), ".png"), width = 25, height = 20, units = "cm", res = 300)
 pl$pl
 dev.off()
 
-# F
+# G
 partition.collapsing.dictinary = split(1:8,1:8)[c(2,8,6,4,3,1,5,7)]
 patch.single.site.plots(
   interpretable.master.table = data.frame(TFBS.cluster = "GenomicTile_12826771", Sample = "SMF_MM_TKO_DE_"), rank = 1, k = 12,
@@ -235,11 +302,11 @@ patch.single.site.plots(
   plotting.TFBSs = plyranges::filter(TFBS.cluster.compositions, cluster.id == plyranges::filter(TFBS.cluster.compositions, absolute.idx == "TFBS_2000388")$cluster.id)
 ) -> pl
 pl$chromatin.influence.df[1,] %>% mutate(ChIP = 0) %>% process.CA.df(., chromHMM, ChIP_thresholds_dictionary_lenient) # 58%;38% | 198bp
-png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2f_", Sys.Date(), ".png"), width = 25, height = 20, units = "cm", res = 300)
+png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2g_", Sys.Date(), ".png"), width = 25, height = 20, units = "cm", res = 300)
 pl$pl
 dev.off()
 
-# G
+# H
 pl.TFBSs = plyranges::filter(TFBS.cluster.compositions, cluster.id == plyranges::filter(TFBS.cluster.compositions, absolute.idx == "TFBS_3355041")$cluster.id)
 pl.TFBSs[1:3] = IRanges::resize(pl.TFBSs[1:3], 8, "center")
 partition.collapsing.dictinary = split(1:9,1:9)[c(1,2,3,4,5,6,7)]
@@ -250,6 +317,6 @@ patch.single.site.plots(
   plotting.TFBSs = pl.TFBSs
 ) -> pl
 pl$chromatin.influence.df[3,] %>% mutate(ChIP = 0) %>% process.CA.df(., chromHMM, ChIP_thresholds_dictionary_lenient) # 100%;0% | 253bp
-png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2g_", Sys.Date(), ".png"), width = 25, height = 20, units = "cm", res = 300)
+png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig2h_", Sys.Date(), ".png"), width = 25, height = 20, units = "cm", res = 300)
 pl$pl
 dev.off()

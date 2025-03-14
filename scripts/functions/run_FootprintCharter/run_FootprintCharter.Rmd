@@ -1,0 +1,679 @@
+```{r setup}
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(tidyverse)
+library(magrittr)
+library(rslurm)
+source("./scripts/functions/utils.r")
+source("./scripts/functions/run_FootprintCharter/rslurm_utils.R")
+```
+
+```{r notes}
+# Manually edit the following files before running
+# submit.sh: 0-1599%100
+# Rscript --vanilla -> Rscript --no-save --no-restore
+# slurm_run.R: 8 -> 1
+
+# Check all results files got generated
+# tmp = list.files(pattern="results")
+# gsub("results_|\\.RDS", "", tmp) -> tmp2
+# paste(which(!0:1599 %in% sort(as.integer(tmp2))) - 1, collapse=",")
+```
+
+```{r Sönmezer tko}
+launch_rslurm_UnsupervisedClustering(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/QuasR_input_files/QuasR_input_AllCanWGpooled_dprm_DE_only.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  genetic.variation = FALSE,
+  methylation = "DE",
+  strong.binders.only = FALSE,
+  additional.jobname.info = paste0("_Sonmezer_PooledReplicates_GenomicTiles80_", Sys.Date()),
+  NR.NODES = 1600,
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+retrieve_UnsupervisedClusteringResults(
+  UnsupervisedClusteringResults_path = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_Barzaghi_Sonmezer_PooledReplicates_GenomicTiles80_20231213",
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  data.type = "PRA",
+  additional.jobname.info = paste0("_Sonmezer_PooledReplicates_GenomicTiles80_", Sys.Date()), 
+  NR.NODES = 200, 
+  NR.CORES = 8, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 08:00:00 -A krebs -N1 --mem=200G -n16 --qos=normal -W 0 --pty -E $SHELL
+.libPaths(c(.libPaths(), "/g/easybuild/x86_64/Rocky/8/haswell/software/R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2"))
+.libPaths(c(.libPaths(), '/g/easybuild/x86_64/Rocky/8/haswell/software/arrow-R/11.0.0.3-foss-2022b-R-4.2.2'))
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+setwd("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/")
+master.table = qs::qread("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/2023-12-13_master.table_Barzaghi_Sonmezer_PooledReplicates_GenomicTiles80.qs")
+TFBSs = Load.TFBSs()
+SNPs = NULL
+GenomicTiles = Load.GenomicTiles(tiles.width = 80, GeneAssociation = FALSE, CGI = TRUE)
+
+# list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_retrieve_UnsupervisedClusteringResults_Barzaghi_Sonmezer_PooledReplicates_GenomicTiles80_20231213", "results_", full.names = TRUE)
+# master.table = Reduce(rbind, parallel::mclapply(list.of.files, function(x)(readRDS(x)[[1]]), mc.preschedule = TRUE, mc.cores = 32))
+# qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_Barzaghi_Sonmezer_PooledReplicates_GenomicTiles80.qs"))
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, data.type = "WT", GenomicTiles = GenomicTiles)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_Sonmezer_PooledReplicates.df.qs"))
+```
+
+```{r Sönmezer tko: separate replicates}
+launch_rslurm_UnsupervisedClustering(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/QuasR_input_files/QuasR_input_AllCanWGpooled_dprm_DE_only_replicates.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  genetic.variation = FALSE,
+  methylation = "DE",
+  strong.binders.only = FALSE,
+  additional.jobname.info = paste0("_Sonmezer_SeparateReplicates_GenomicTiles80_", Sys.Date()),
+  NR.NODES = 1600,
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+retrieve_UnsupervisedClusteringResults(
+  UnsupervisedClusteringResults_path = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_Barzaghi_Sonmezer_SeparateReplicates_GenomicTiles80_20240515",
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  data.type = "PRA",
+  additional.jobname.info = paste0("_Sonmezer_SeparateReplicates_GenomicTiles80_", Sys.Date()), 
+  NR.NODES = 200, 
+  NR.CORES = 8, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 08:00:00 -A krebs -N1 --mem=200G -n32 --qos=normal -W 0 --pty -E $SHELL
+# ulimit -s 100000000
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+setwd("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/")
+master.table = qs::qread("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/2024-05-20_master.table_Barzaghi_Sonmezer_SeparateReplicates_GenomicTiles80.qs")
+TFBSs = Load.TFBSs()
+SNPs = NULL
+GenomicTiles = Load.GenomicTiles(tiles.width = 80, GeneAssociation = FALSE, CGI = TRUE)
+
+# list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_retrieve_UnsupervisedClusteringResults_Barzaghi_Sonmezer_SeparateReplicates_GenomicTiles80_20240516", "results_", full.names = TRUE)
+# master.table = Reduce(rbind, parallel::mclapply(list.of.files, function(x)(readRDS(x)[[1]]), mc.preschedule = TRUE, mc.cores = 32))
+# qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_Barzaghi_Sonmezer_SeparateReplicates_GenomicTiles80.qs"))
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, data.type = "WT", GenomicTiles = GenomicTiles)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_Sonmezer_SeparateReplicates.df.qs"))
+```
+
+```{r F1 data}
+launch_rslurm_UnsupervisedClustering(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/QuasR_input_F1_bait_capture_2024-08-15.txt", #"/g/krebs/barzaghi/HTS/SMF/MM/QuasR_input_all_bait_capture_data_pooledReplicates.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""), 
+  genetic.variation = TRUE, 
+  methylation = "DE",
+  strong.binders.only = FALSE, 
+  additional.jobname.info = paste0("_PooledReplicates_GenomicTiles80_", Sys.Date()), 
+  NR.NODES = 1600,
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+retrieve_UnsupervisedClusteringResults(
+  UnsupervisedClusteringResults_path = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_Barzaghi_PooledReplicates_GenomicTiles80_20231212/",
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  data.type = "F1",
+  additional.jobname.info = paste0("_PooledReplicates_GenomicTiles80_", Sys.Date()), 
+  NR.NODES = 200, 
+  NR.CORES = 8, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 8:00:00 -A krebs -N1 --mem=200G -n32 --qos=normal -W 0 --pty -E $SHELL
+.libPaths(c(.libPaths(), "/g/easybuild/x86_64/Rocky/8/haswell/software/R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2"))
+.libPaths(c(.libPaths(), '/g/easybuild/x86_64/Rocky/8/haswell/software/arrow-R/11.0.0.3-foss-2022b-R-4.2.2'))
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+setwd("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/")
+TFBSs = Load.TFBSs()
+SNPs = LoadSNPs()
+GenomicTiles = Load.GenomicTiles(tiles.width = 80, GeneAssociation = FALSE, CGI = TRUE)
+master.table = qs::qread("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/2023-12-13_master.table_Barzaghi_PooledReplicates_GenomicTiles80.qs")
+
+# list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_retrieve_UnsupervisedClusteringResults_Barzaghi_PooledReplicates_GenomicTiles80_20231213", "results_", full.names = TRUE)
+# master.table = Reduce(rbind, parallel::mclapply(list.of.files, function(x)(readRDS(x)[[1]]), mc.preschedule = TRUE, mc.cores = 32))
+# qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_Barzaghi_PooledReplicates_GenomicTiles80.qs"))
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, GenomicTiles = GenomicTiles, data.type = "F1")
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_F1_PooledReplicates.df.qs"))
+```
+
+```{r F1 data: separate replicates}
+launch_rslurm_UnsupervisedClustering(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/QuasR_input_all_bait_capture_data.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE,
+  additional.jobname.info = paste0("_SeparateReplicates_GenomicTiles80_", Sys.Date()), 
+  NR.NODES = 1600, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+tmp = list.files(pattern="results")
+gsub("results_|\\.RDS", "", tmp) -> tmp2
+paste(which(!0:1599 %in% sort(as.integer(tmp2))) - 1, collapse=",")
+
+retrieve_UnsupervisedClusteringResults(
+  UnsupervisedClusteringResults_path = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_Barzaghi_SeparateReplicates_GenomicTiles80_20230821/",
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  data.type = "F1",
+  additional.jobname.info = paste0("_SeparateReplicates_GenomicTiles80_", Sys.Date()), 
+  NR.NODES = 200, 
+  NR.CORES = 8, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 04:00:00 -A krebs -N1 --mem=200G -n32 --qos=normal -W 0 --pty -E $SHELL
+list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_retrieve_UnsupervisedClusteringResults_Barzaghi_SeparateReplicates_GenomicTiles80_20230824", "results_", full.names = TRUE)
+Reduce(rbind, parallel::mclapply(list.of.files, function(x)(readRDS(x)[[1]]), mc.preschedule = TRUE, mc.cores = 32)) -> master.table
+saveRDS(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_Barzaghi_SeparateReplicates_GenomicTiles80.RDS"))
+
+# srun -t 24:00:00 -A krebs -N1 --mem=200G -n1 --qos=normal -W 0 --pty -E $SHELL
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+setwd("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/")
+master.table = readRDS("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/2023-08-")
+TFBSs = Load.TFBSs(kind = "Barzaghi", GenVar.info = "GenVarChange")
+SNPs = LoadSNPs()
+GenomicTiles = Load.GenomicTiles(tiles.width = 80, GeneAssociation = FALSE, CGI = TRUE)
+TileGeneAssociation = Load.GenomicTiles(tiles.width = 80, GeneAssociation = TRUE)
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table)
+saveRDS(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_SeparateReplicates.df.RDS"))
+cobinders = make.cobinders.df(chromatin.influence.df = chromatin.influence.df, TFBSs = TFBSs)
+saveRDS(cobinders, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_cobinders_SeparateReplicates.df.RDS"))
+```
+
+```{r Sox2 dTAG run2+run3 pooled replicates: no}
+launch_rslurm_UnsupervisedClustering(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/2024-05-22-2222T2JNX/Qinput_Sox2_dTAG_run2_run3.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  genetic.variation = FALSE,
+  methylation = "NO",
+  strong.binders.only = FALSE,
+  additional.jobname.info = paste0("_Sox2_dTAG_run2_run3_PooledReps_", Sys.Date()),
+  NR.NODES = 1600,
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+retrieve_UnsupervisedClusteringResults(
+  UnsupervisedClusteringResults_path = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_Barzaghi_Sox2_dTAG_run2_run3_PooledReps_20250223",
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  data.type = "PRA",
+  additional.jobname.info = paste0("_Sox2_dTAG_run2_run3_PooledReps_", Sys.Date()), 
+  NR.NODES = 50, 
+  NR.CORES = 8, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 12:00:00 -A krebs -N1 --mem=500G -p bigmem -n16 --qos=normal -W 0 --pty -E $SHELL
+# ulimit -s 100000000
+# loadr
+.libPaths(c(.libPaths(), "/g/easybuild/x86_64/Rocky/8/haswell/software/R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2"))
+.libPaths(c(.libPaths(), '/g/easybuild/x86_64/Rocky/8/haswell/software/arrow-R/11.0.0.3-foss-2022b-R-4.2.2'))
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+setwd("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/")
+list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_retrieve_UnsupervisedClusteringResults_Barzaghi_Sox2_dTAG_run2_run3_PooledReps_20250223", "results_", full.names = TRUE)
+Reduce(rbind, parallel::mclapply(list.of.files, function(x)(readRDS(x)[[1]]), mc.preschedule = TRUE, mc.cores = 16)) -> master.table
+qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_Barzaghi_Sox2_dTAG_run2_run3_PooledReps.qs"))
+TFBSs = Load.TFBSs()
+SNPs = NULL # LoadSNPs()
+GenomicTiles = Load.GenomicTiles(tiles.width = 80, GeneAssociation = FALSE, CGI = TRUE)
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, data.type = "WT", GenomicTiles = GenomicTiles, skip.chip = FALSE, genome = BSgenome.Mmusculus.UCSC.mm10)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_Sox2_dTAG_run2_run3_PooledReps.df.qs"))
+```
+
+```{r Sox2 dTAG run2+run3 separate replicates: no}
+launch_rslurm_UnsupervisedClustering(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/2024-05-22-2222T2JNX/Qinput_Sox2_dTAG_run2_run3_SepRep.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  genetic.variation = FALSE,
+  methylation = "NO",
+  strong.binders.only = FALSE,
+  additional.jobname.info = paste0("_Sox2_dTAG_run2_run3_SepReps_", Sys.Date()),
+  NR.NODES = 1600,
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+retrieve_UnsupervisedClusteringResults(
+  UnsupervisedClusteringResults_path = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_Barzaghi_Sox2_dTAG_run2_run3_SepReps_20250223",
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  data.type = "PRA",
+  additional.jobname.info = paste0("_Sox2_dTAG_run2_run3_SepReps_", Sys.Date()), 
+  NR.NODES = 50, 
+  NR.CORES = 8, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 12:00:00 -A krebs -N1 --mem=500G -p bigmem -n16 --qos=normal -W 0 --pty -E $SHELL
+# ulimit -s 100000000
+# loadr
+.libPaths(c(.libPaths(), "/g/easybuild/x86_64/Rocky/8/haswell/software/R-bundle-Bioconductor/3.16-foss-2022b-R-4.2.2"))
+.libPaths(c(.libPaths(), '/g/easybuild/x86_64/Rocky/8/haswell/software/arrow-R/11.0.0.3-foss-2022b-R-4.2.2'))
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+setwd("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/")
+list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_retrieve_UnsupervisedClusteringResults_Barzaghi_Sox2_dTAG_run2_run3_SepReps_20250223", "results_", full.names = TRUE)
+Reduce(rbind, parallel::mclapply(list.of.files, function(x)(readRDS(x)[[1]]), mc.preschedule = TRUE, mc.cores = 16)) -> master.table
+qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_Barzaghi_Sox2_dTAG_run2_run3_SepReps.qs"))
+TFBSs = Load.TFBSs()
+SNPs = NULL # LoadSNPs()
+GenomicTiles = Load.GenomicTiles(tiles.width = 80, GeneAssociation = FALSE, CGI = TRUE)
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, data.type = "WT", GenomicTiles = GenomicTiles, skip.chip = FALSE, genome = BSgenome.Mmusculus.UCSC.mm10)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_Sox2_dTAG_run2_run3_SepReps.df.qs"))
+```
+
+```{r chemical inhibitions: de}
+launch_rslurm_UnsupervisedClustering(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/2024-05-22-2222T2JNX/Qinput_chemical_inhibitions.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  genetic.variation = FALSE,
+  methylation = "DE",
+  strong.binders.only = FALSE,
+  additional.jobname.info = paste0("_chemical_inhibitions_GenomicTiles80_", Sys.Date()), 
+  NR.NODES = 1600, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+retrieve_UnsupervisedClusteringResults(
+  UnsupervisedClusteringResults_path = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_Barzaghi_chemical_inhibitions_GenomicTiles80_20240529",
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE,
+  data.type = "PRA",
+  additional.jobname.info = paste0("_chemical_inhibitions_GenomicTiles80_", Sys.Date()),
+  NR.NODES = 50,
+  NR.CORES = 8,
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 12:00:00 -A krebs -N1 --mem=500G -p bigmem -n16 --qos=normal -W 0 --pty -E $SHELL
+# ulimit -s 100000000
+# loadr
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+setwd("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/")
+list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_retrieve_UnsupervisedClusteringResults_Barzaghi_chemical_inhibitions_GenomicTiles80_20240530", "results_", full.names = TRUE)
+Reduce(rbind, parallel::mclapply(list.of.files, function(x)(readRDS(x)[[1]]), mc.preschedule = TRUE, mc.cores = 16)) -> master.table
+qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_Barzaghi_chemical_inhibitions_GenomicTiles80.qs"))
+# master.table = qs::qread("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/2024-05-30_master.table_Barzaghi_chemical_inhibitions_GenomicTiles80.qs")
+TFBSs = Load.TFBSs()
+SNPs = NULL # LoadSNPs()
+GenomicTiles = Load.GenomicTiles(tiles.width = 80, GeneAssociation = FALSE, CGI = TRUE)
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, data.type = "WT", GenomicTiles = GenomicTiles)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_chemical_inhibitions.df.qs"))
+```
+
+```{r chemical inhibitions separateReplicates: de}
+launch_rslurm_UnsupervisedClustering(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/HTS/SMF/MM/2024-05-22-2222T2JNX/Qinput_chemical_inhibitions_sepRep.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  genetic.variation = FALSE,
+  methylation = "DE",
+  strong.binders.only = FALSE,
+  additional.jobname.info = paste0("_chemical_inhibitions_separateReplicates_GenomicTiles80_", Sys.Date()), 
+  NR.NODES = 1600, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+retrieve_UnsupervisedClusteringResults(
+  UnsupervisedClusteringResults_path = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_Barzaghi_chemical_inhibitions_separateReplicates_GenomicTiles80_20240604",
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE,
+  data.type = "PRA",
+  additional.jobname.info = paste0("_chemical_inhibitions_separateReplicates_GenomicTiles80_", Sys.Date()),
+  NR.NODES = 50,
+  NR.CORES = 8,
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 12:00:00 -A krebs -N1 --mem=500G -p bigmem -n16 --qos=normal -W 0 --pty -E $SHELL
+# ulimit -s 100000000
+# loadr
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+setwd("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/")
+list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_retrieve_UnsupervisedClusteringResults_Barzaghi_chemical_inhibitions_separateReplicates_GenomicTiles80_20240604", "results_", full.names = TRUE)
+Reduce(rbind, parallel::mclapply(list.of.files, function(x)(readRDS(x)[[1]]), mc.preschedule = TRUE, mc.cores = 16)) -> master.table
+qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_Barzaghi_chemical_inhibitions_separateReplicates_GenomicTiles80.qs"))
+# master.table = qs::qread("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/2024-05-30_master.table_Barzaghi_chemical_inhibitions_GenomicTiles80.qs")
+TFBSs = Load.TFBSs()
+SNPs = NULL # LoadSNPs()
+GenomicTiles = Load.GenomicTiles(tiles.width = 80, GeneAssociation = FALSE, CGI = TRUE)
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, data.type = "WT", GenomicTiles = GenomicTiles)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_chemical_separateReplicates_inhibitions.df.qs"))
+# cobinders = make.cobinders.df(chromatin.influence.df = chromatin.influence.df, TFBSs = TFBSs, data.type = "WT", GenomicTiles = GenomicTiles)
+# qs::qsave(cobinders, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_cobinders_Oct4_Sox2_KD.df.qs"))
+```
+
+```{r p300i pooledReplicates: de}
+launch_rslurm_UnsupervisedClustering(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/baderna/HTS/SMF/MM/bait/2024/SMF_MM_TKO_DE_bait_p300i_all_replicates_merged.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  genetic.variation = FALSE,
+  methylation = "DE",
+  strong.binders.only = FALSE,
+  additional.jobname.info = paste0("_p300i_pooledReplicates_GenomicTiles80_", Sys.Date()), 
+  NR.NODES = 1600, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+retrieve_UnsupervisedClusteringResults(
+  UnsupervisedClusteringResults_path = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_Barzaghi_p300i_pooledReplicates_GenomicTiles80_20241017",
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE,
+  data.type = "PRA",
+  additional.jobname.info = paste0("_p300i_pooledReplicates_GenomicTiles80_", Sys.Date()),
+  NR.NODES = 50,
+  NR.CORES = 8,
+  tryCatchLog.write.error.dump.file = FALSE
+)
+# RESUME HERE
+# srun -t 12:00:00 -A krebs -N1 --mem=500G -p bigmem -n16 --qos=normal -W 0 --pty -E $SHELL
+# ulimit -s 100000000
+# loadr
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+setwd("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/")
+list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_retrieve_UnsupervisedClusteringResults_Barzaghi_p300i_pooledReplicates_GenomicTiles80_20250108", "results_", full.names = TRUE)
+Reduce(rbind, parallel::mclapply(list.of.files, function(x)(readRDS(x)[[1]]), mc.preschedule = TRUE, mc.cores = 16)) -> master.table
+qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_Barzaghi_p300i_pooledReplicates_GenomicTiles80.qs"))
+# master.table = qs::qread("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/2024-05-30_master.table_Barzaghi_chemical_inhibitions_GenomicTiles80.qs")
+TFBSs = Load.TFBSs()
+SNPs = NULL # LoadSNPs()
+GenomicTiles = Load.GenomicTiles(tiles.width = 80, GeneAssociation = FALSE, CGI = TRUE)
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, data.type = "WT", GenomicTiles = GenomicTiles)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_p300i_pooledReplicates.df.qs"))
+```
+
+```{r p300i separateReplicates: de}
+launch_rslurm_UnsupervisedClustering(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/baderna/HTS/SMF/MM/bait/2024/quasR_input_p300i_bait_R1R3R4R5_BAM_deDup.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  genetic.variation = FALSE,
+  methylation = "DE",
+  strong.binders.only = FALSE,
+  additional.jobname.info = paste0("_p300i_separateReplicates_GenomicTiles80_", Sys.Date()), 
+  NR.NODES = 1600,
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+retrieve_UnsupervisedClusteringResults(
+  UnsupervisedClusteringResults_path = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_Barzaghi_p300i_separateReplicates_GenomicTiles80_20250122",
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE,
+  data.type = "PRA",
+  additional.jobname.info = paste0("_p300i_separateReplicates_GenomicTiles80_", Sys.Date()),
+  NR.NODES = 50,
+  NR.CORES = 8,
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 12:00:00 -A krebs -N1 --mem=500G -p bigmem -n16 --qos=normal -W 0 --pty -E $SHELL
+# ulimit -s 100000000
+# loadr
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+setwd("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/")
+# list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_retrieve_UnsupervisedClusteringResults_Barzaghi_p300i_separateReplicates_GenomicTiles80_20250123", "results_", full.names = TRUE)
+# Reduce(rbind, parallel::mclapply(list.of.files, function(x)(readRDS(x)[[1]]), mc.preschedule = TRUE, mc.cores = 16)) -> master.table
+# qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_Barzaghi_p300i_separateReplicates_GenomicTiles80.qs"))
+master.table = qs::qread("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/2025-01-25_master.table_Barzaghi_p300i_separateReplicates_GenomicTiles80.qs")
+TFBSs = Load.TFBSs()
+SNPs = NULL # LoadSNPs()
+GenomicTiles = Load.GenomicTiles(tiles.width = 80, GeneAssociation = FALSE, CGI = TRUE)
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, data.type = "WT", GenomicTiles = GenomicTiles, skip.chip = FALSE, genome = BSgenome.Mmusculus.UCSC.mm10)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_p300i_separateReplicates.df.qs"))
+```
+
+```{r PRA}
+# readRDS("/g/krebs/baderna/analysis/SMF/MM/RMCE/2023-01-19-KM4B7/rds/2023.02.21_CRE_autonomy_pilot_final_ranges.rds") # has ranges on non canonical chromosomes
+# readRDS("/g/krebs/baderna/analysis/SMF/MM/RMCE/CRE_autonomy_extended_library/rds/CRE_autonomy_6000seqs.rds") %>% plyranges::filter(seqnames %in% paste0("chr", c(1:19, "X", "Y"))) %>% qs::qsave("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_6000seqs.qs")
+# c(qs::qread("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_6000seqs.qs"), readRDS("/g/krebs/baderna/analysis/SMF/MM/RMCE/2023-01-19-KM4B7/rds/2023.02.21_CRE_autonomy_pilot_final_ranges.rds")) -> tmp
+# names(tmp) = paste0("CRE_", seq_along(tmp))
+# qs::qsave(tmp, "/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_final_ranges.qs")
+
+launch_rslurm_UnsupervisedClustering_PRA(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/Qinput_all_insertion_data_RepsPooled.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  additional.jobname.info = paste0("_PooledReplicates_FullRanges_", Sys.Date()), 
+  NR.NODES = 64, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 08:00:00 -A krebs -N1 --mem=200G -n16 --qos=normal -W 0 --pty -E $SHELL
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+TFBSs = Load.TFBSs()
+SNPs = NULL
+GenomicTiles = qs::qread("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_final_ranges.qs")
+seqlevels(GenomicTiles) = seqlevels(TFBSs)
+list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_PRA_Barzaghi_PooledReplicates_FullRanges_20240726", "results_", full.names = TRUE)
+master.table = create.master.table(list.of.files = list.of.files, single.site.coverage.thr = 20, data.type = "PRA", cores = 16)
+qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_PRA_Barzaghi_PooledReplicates_FullRanges.qs"))
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, GenomicTiles = GenomicTiles, data.type = "PRA", skip.chip = FALSE, genome = BSgenome.Mmusculus.UCSC.mm10)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_PRA_Barzaghi_PooledReplicates_FullRanges.qs"))
+```
+
+```{r PRA: separate replicates}
+# readRDS("/g/krebs/baderna/analysis/SMF/MM/RMCE/2023-01-19-KM4B7/rds/2023.02.21_CRE_autonomy_pilot_final_ranges.rds") # has ranges on non canonical chromosomes
+# readRDS("/g/krebs/baderna/analysis/SMF/MM/RMCE/CRE_autonomy_extended_library/rds/CRE_autonomy_6000seqs.rds") %>% plyranges::filter(seqnames %in% paste0("chr", c(1:19, "X", "Y"))) %>% qs::qsave("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_6000seqs.qs")
+# c(qs::qread("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_6000seqs.qs"), readRDS("/g/krebs/baderna/analysis/SMF/MM/RMCE/2023-01-19-KM4B7/rds/2023.02.21_CRE_autonomy_pilot_final_ranges.rds")) -> tmp
+# names(tmp) = paste0("CRE_", seq_along(tmp))
+# qs::qsave(tmp, "/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_final_ranges.qs")
+
+launch_rslurm_UnsupervisedClustering_PRA(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/Qinput_all_insertion_data.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  additional.jobname.info = paste0("_SeparateReplicates_FullRanges_", Sys.Date()), 
+  NR.NODES = 128, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 08:00:00 -A krebs -N1 --mem=200G -n16 --qos=normal -W 0 --pty -E $SHELL
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+TFBSs = Load.TFBSs()
+SNPs = NULL
+GenomicTiles = qs::qread("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_final_ranges.qs")
+seqlevels(GenomicTiles) = seqlevels(TFBSs)
+list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_PRA_Barzaghi_SeparateReplicates_FullRanges_20240603", "results_", full.names = TRUE)
+master.table = create.master.table(list.of.files = list.of.files, single.site.coverage.thr = 20, data.type = "PRA", cores = 16)
+qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_PRA_Barzaghi_SeparateReplicates_FullRanges.qs"))
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, GenomicTiles = GenomicTiles, data.type = "PRA", skip.chip = FALSE, genome = BSgenome.Mmusculus.UCSC.mm10)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_PRA_Barzaghi_SeparateReplicates_FullRanges.qs"))
+```
+
+```{r PRA mutants}
+# readRDS("/g/krebs/baderna/analysis/SMF/MM/RMCE/2023-01-19-KM4B7/rds/2023.02.21_CRE_autonomy_pilot_final_ranges.rds") # has ranges on non canonical chromosomes
+# readRDS("/g/krebs/baderna/analysis/SMF/MM/RMCE/CRE_autonomy_extended_library/rds/CRE_autonomy_6000seqs.rds") %>% plyranges::filter(seqnames %in% paste0("chr", c(1:19, "X", "Y"))) %>% qs::qsave("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_6000seqs.qs")
+# c(qs::qread("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_6000seqs.qs"), readRDS("/g/krebs/baderna/analysis/SMF/MM/RMCE/2023-01-19-KM4B7/rds/2023.02.21_CRE_autonomy_pilot_final_ranges.rds")) -> tmp
+# names(tmp) = paste0("CRE_", seq_along(tmp))
+# qs::qsave(tmp, "/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_final_ranges.qs")
+
+launch_rslurm_UnsupervisedClustering_PRA_mutants(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/barzaghi/analyses/08.02.24_RMCE_mutants/samplesheet_merged.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  additional.jobname.info = paste0("_PooledReplicates_FullRanges_", Sys.Date()), 
+  NR.NODES = 32, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 08:00:00 -A krebs -N1 --mem=200G -n8 --qos=normal -W 0 --pty -E $SHELL
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.KrebsEMBL.MutantsBatch1VB, lib.loc = "/g/krebs/baderna/R/x86_64-pc-linux-gnu-library/4.2/")
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+
+TFBSs = qs::qread("/g/krebs/barzaghi/analyses/08.02.24_RMCE_mutants/TFBSs.qs")
+TFBSs$Cast.delta.pwm = NA
+TFBSs$Spret.delta.pwm = NA
+SNPs = NULL
+GenomicTiles = qs::qread("/g/krebs/barzaghi/analyses/08.02.24_RMCE_mutants/MutantsBatch1VB_ranges.qs")
+seqlevels(GenomicTiles) = seqlevels(TFBSs)
+
+# list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_PRA_mutants_Barzaghi_PooledReplicates_FullRanges_20240304", "results_", full.names = TRUE)
+# master.table = create.master.table(list.of.files = list.of.files, single.site.coverage.thr = 20, data.type = "PRA", cores = 8)
+# qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_PRA_mutants_Barzaghi_PooledReplicates_FullRanges.qs"))
+master.table = qs::qread("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/2024-03-04_master.table_PRA_mutants_Barzaghi_PooledReplicates_FullRanges.qs")
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, GenomicTiles = GenomicTiles, data.type = "PRA", skip.chip = TRUE, genome = BSgenome.Mmusculus.KrebsEMBL.MutantsBatch1VB)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_PRA_mutants_Barzaghi_PooledReplicates_FullRanges.qs"))
+```
+
+```{r PRA chem}
+launch_rslurm_UnsupervisedClustering_PRA(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  sampleSheet = "/g/krebs/baderna/HTS/SMF/MM/RMCE/2024/2024-06-03-AAFMCVWM5/data/qinput/QuasR_aligned_files_2024-07-16_RMCE_chem_inh_all_samples_read1_merged_rep.txt",
+  # sampleSheet = "/g/krebs/baderna/HTS/SMF/MM/RMCE/2024/2024-06-03-AAFMCVWM5/data/qinput/QuasR_aligned_files_2024-07-16_RMCE_chem_inh_all_samples_both_reads_merged_rep.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  additional.jobname.info = paste0("_ChemicalInhibitions_PooledReplicates_Read1_", Sys.Date()),
+  # additional.jobname.info = paste0("_ChemicalInhibitions_PooledReplicates_BothReads_", Sys.Date()), 
+  NR.NODES = 32, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 08:00:00 -A krebs -N1 --mem=200G -n16 --qos=normal -W 0 --pty -E $SHELL
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+TFBSs = Load.TFBSs()
+SNPs = NULL
+GenomicTiles = qs::qread("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_final_ranges.qs")
+seqlevels(GenomicTiles) = seqlevels(TFBSs)
+list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_PRA_Barzaghi_ChemicalInhibitions_PooledReplicates_BothReads_20240718", "results_", full.names = TRUE)
+master.table = create.master.table(list.of.files = list.of.files, single.site.coverage.thr = 20, data.type = "PRA", cores = 8)
+qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_PRA_Barzaghi_ChemicalInhibitions_PooledReplicates_BothReads.qs"))
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, GenomicTiles = GenomicTiles, data.type = "PRA", skip.chip = FALSE, genome = BSgenome.Mmusculus.UCSC.mm10)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_PRA_Barzaghi_ChemicalInhibitions_PooledReplicates_BothReads.qs"))
+```
+
+```{r PRA chem sepRep}
+launch_rslurm_UnsupervisedClustering_PRA(
+  working.directory = "/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/",
+  # sampleSheet = "/g/krebs/baderna/HTS/SMF/MM/RMCE/2024/2024-06-03-AAFMCVWM5/data/qinput/QuasR_aligned_files_2024-07-16_RMCE_chem_inh_all_samples_read1_sep_rep.txt",
+  sampleSheet = "/g/krebs/baderna/HTS/SMF/MM/RMCE/2024/2024-06-03-AAFMCVWM5/data/qinput/QuasR_aligned_files_2024-07-16_RMCE_chem_inh_all_samples_both_reads_sep_rep.txt",
+  Load.TFBSs.args = list(kind = "Barzaghi", GenVar.info = "GenVarChange", idx.by = ""),
+  strong.binders.only = FALSE, 
+  # additional.jobname.info = paste0("_ChemicalInhibitions_SeparateReplicates_Read1_", Sys.Date()),
+  additional.jobname.info = paste0("_ChemicalInhibitions_SeparateReplicates_BothReads_", Sys.Date()),
+  NR.NODES = 32, 
+  tryCatchLog.write.error.dump.file = FALSE
+)
+
+# srun -t 08:00:00 -A krebs -N1 --mem=200G -n16 --qos=normal -W 0 --pty -E $SHELL
+library(tidyverse)
+library(magrittr)
+library(SingleMoleculeFootprinting)
+library(BSgenome.Mmusculus.UCSC.mm10)
+library(parallel)
+source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
+source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+TFBSs = Load.TFBSs()
+SNPs = NULL
+GenomicTiles = qs::qread("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_final_ranges.qs")
+seqlevels(GenomicTiles) = seqlevels(TFBSs)
+list.of.files = list.files("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/_rslurm_UnsupervisedClustering_PRA_Barzaghi_ChemicalInhibitions_SeparateReplicates_BothReads_20240718", "results_", full.names = TRUE)
+master.table = create.master.table(list.of.files = list.of.files, single.site.coverage.thr = 20, data.type = "PRA", cores = 16)
+qs::qsave(master.table, paste0("/g/krebs/barzaghi/analyses/11.11.22_UnsupervisedClustering/", Sys.Date(),"_master.table_PRA_Barzaghi_ChemicalInhibitions_SeparateReplicates_BothReads.qs"))
+chromatin.influence.df = make.chromatin.influence.df(master.table = master.table, GenomicTiles = GenomicTiles, data.type = "PRA", skip.chip = FALSE, genome = BSgenome.Mmusculus.UCSC.mm10)
+qs::qsave(chromatin.influence.df, paste0("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/", Sys.Date(), "_chromatin.influence_PRA_Barzaghi_ChemicalInhibitions_SeparateReplicates_BothReads.qs"))
+```

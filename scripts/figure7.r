@@ -2,9 +2,9 @@ library(tidyverse)
 library(magrittr)
 library(DESeq2)
 library(BSgenome.Mmusculus.UCSC.mm10)
-source("/g/krebs/barzaghi/Rscripts/CrappyUtils.R")
-source("/g/krebs/barzaghi/Rscripts/IGV_plotting.R")
-source("/g/krebs/barzaghi/analyses/single.molecule.classification/utils/Source.all.unsupervised.functions.R")
+source("./scripts/functions/utils.r")
+source("./scripts/functions/IGV_plotting.r")
+source("./scripts/functions/source_FootprintCharter_functions.r")
 detach("package:plyranges")
 
 PROseq = qs::qread("/g/krebs/barzaghi/analyses/10.05.23_F1_PROseq/2024-04-04_PROseq.qs") # "/g/krebs/barzaghi/analyses/10.05.23_F1_PROseq/PROseq_processing.R"
@@ -30,20 +30,6 @@ table(f1_smf_proseq$change, f1_smf_proseq$PROseq.change)[1,1] /
 
 # A
 f1_smf_proseq %>%
-  filter(change == "down") %>%
-  ggplot() +
-  geom_point(aes(log2FoldChange, -log10(PROseq.padj), color = PROseq.change)) +
-  scale_color_manual(values = c("red", "black", "blue"), breaks = c("down", "no", "up")) +
-  scale_y_continuous(breaks = c(0,15)) +
-  scale_x_continuous(breaks = c(-6,0,3)) +
-  xlab("qPRO-seq log2(FC)") +
-  ylab("-log10(p-adj)") +
-  theme_bw() +
-  theme(text = element_text(size = 18),  legend.position = c(.8,.88), legend.background = element_blank(), legend.title = element_blank()) -> pl
-ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig4a_", Sys.Date(), ".pdf"), pl, width = 3.5, height = 3.5)
-
-# B
-f1_smf_proseq %>%
   mutate(accessibility.delta.bins = factor(ifelse(p.adj>.05, "n.s.", ifelse(CA.delta >= -30, "0-30%", "31-100%")), levels = c("n.s.", "0-30%", "31-100%"))) %>%
   group_by(accessibility.delta.bins) %>% filter(all(c("enhancer", "promoter") %in% locus)) %>% ungroup() -> pl.df
 
@@ -63,14 +49,14 @@ pl.df %>%
   scale_y_continuous(breaks = c(-6,0,4)) +
   theme_bw() +
   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = .5), text = element_text(size = 18)) -> pl
-ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig4b_", Sys.Date(), ".pdf"), pl, width = 5, height = 4)
+ggplot2::ggsave(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig7a_", Sys.Date(), ".pdf"), pl, width = 5, height = 4)
 pl.df %>%
   filter(locus != "Ctcf") %>%
   group_by(locus, accessibility.delta.bins) %>%
   summarise(n = n(), .groups = "drop") %>% # detach("package:plyranges")
   spread(accessibility.delta.bins, n)
 
-# C
+# B
 partition.collapsing.dictionary = split(1:12,1:12)[c(4,12,7,10,9,3,2,8,1,5,11,6)]
 pl.df %>%
   filter(TF.name == "TFBS_2708927", Sample == "STKO") %>%
@@ -93,7 +79,7 @@ pl$chromatin.influence.df[2,] %>%
 filter(pl.df, TF.name == "TFBS_2708927", Sample == "STKO")$log2FoldChange # -0.9711348 (PROseq)
 filter(pl.df, TF.name == "TFBS_2708927", Sample == "STKO")$PROseq.padj # 0.002205783 (PROseq)
 filter(pl.df, TF.name == "TFBS_2708927", Sample == "STKO")$p.adj # 5.942256e-05 (SMF)
-png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig4c_", Sys.Date(), ".png"), width = 30, height = 30, units = "cm", res = 300)
+png(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig7b_", Sys.Date(), ".png"), width = 30, height = 30, units = "cm", res = 300)
 pl$pl
 dev.off()
 
@@ -101,8 +87,6 @@ RegionOfInterest = IRanges::resize(TFBSs["TFBS_2708927"], width = 9000, fix = "c
 plot_genomic_track(
   sampleSheet = "/g/krebs/barzaghi/analyses/nf-core_runs/130923_BL6_Spret_F1_ATAC/aln_merged_deduplicated/samplesheet_PooledReplicates.txt",
   samples = "BL6_Spret_F1",
-  # sampleSheet = "/g/krebs/barzaghi/HTS/ATAC-seq/Heard_NatGen_2017/aln/Qinput_male.txt",
-  # samples = "male_R1",
   RegionOfInterest = RegionOfInterest,
   allelic = TRUE,
   tile.width = 1000,
@@ -148,21 +132,6 @@ plot_genomic_track(
   normalise = FALSE, 
   plot.coordinates = TRUE
 ) -> PROseq_track
-# Not aligned with QuasR
-# plot_genomic_track( 
-#   sampleSheet = "/g/krebs/barzaghi/HTS/RNAseq/OutDir/SPRET_TKO/Qinput.txt",
-#   samples = c("BL6", "Spretus"),
-#   RegionOfInterest = RegionOfInterest,
-#   allelic = TRUE, 
-#   tile.width = 4,
-#   tile.step = 2,
-#   max.y.lim = 50,
-#   color = c("black", "grey45"), 
-#   y.labs = c("Bl6 PROseq", "Spret PROseq"),
-#   delta = FALSE,
-#   normalise = FALSE, 
-#   plot.coordinates = TRUE
-# ) -> RNAseq_track
 p_final <- ATAC_track + Klf4_track + MNase_track + PROseq_track +
   plot_layout(ncol = 1, heights = c(1/3, 1/6, 1/6, 1/3))
 pdf(paste0("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/fig4b_tracks_", Sys.Date(), ".pdf"), width = 9, height = 5)
