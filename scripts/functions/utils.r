@@ -279,7 +279,8 @@ ChIP_data_dictionary = list(
   Otx2 = "/g/krebs/barzaghi/Tmp/QuasR_input_Otx2_ChIPseq.txt",
   Zfx = "/g/krebs/barzaghi/Tmp/QuasR_input_Zfx_ChIPseq.txt",
   H3K27Ac = "/g/krebs/barzaghi/Tmp/QuasR_input_H3K27Ac_ChIPseq.txt",
-  H3K4me3 = "/g/krebs/barzaghi/Tmp/QuasR_input_H3K4me3_ChIPseq.txt"
+  H3K4me3 = "/g/krebs/barzaghi/Tmp/QuasR_input_H3K4me3_ChIPseq.txt",
+  H3K4me1 = "/g/krebs/barzaghi/Tmp/QuasR_input_H3K4me1_ChIPseq.txt"
 )
 
 ChIP_thresholds_dictionary = data.frame(

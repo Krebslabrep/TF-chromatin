@@ -9,7 +9,13 @@ library(rtracklayer)
 library(ggbio)
 library(BSgenome.Mmusculus.UCSC.mm10)
 
-plot_genomic_track <- function(sampleSheet, samples, allelic = FALSE, RegionOfInterest, tile.width = 200, tile.step = 50, max.y.lim = NULL, color = "black", y.labs = "", delta = FALSE, normalise = FALSE, plot.coordinates = FALSE){
+plot_genomic_track <- function(
+    sampleSheet, samples, RegionOfInterest, 
+    tile.width = 200, tile.step = 50, max.y.lim = NULL, 
+    color = "black", y.labs = "", plot.coordinates = FALSE,
+    allelic = FALSE, delta = FALSE, 
+    normalize = FALSE, normalization.factor = NULL
+    ){
   
   proj = QuasR::qAlign(
     sampleFile = sampleSheet, genome = "BSgenome.Mmusculus.UCSC.mm10", 
@@ -62,6 +68,10 @@ plot_genomic_track <- function(sampleSheet, samples, allelic = FALSE, RegionOfIn
   } else {
     x.axis.breaks = c(start(RegionOfInterest), end(RegionOfInterest))
     x.axis.labels = c("", "")
+  }
+  
+  if(normalize){
+    pl.df %<>% mutate(score = score/normalization.factor*1e6)
   }
   
   pl.df %>%

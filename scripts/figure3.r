@@ -3,9 +3,9 @@ library(magrittr)
 library(dplyr)
 library(BSgenome.Mmusculus.UCSC.mm10)
 library(SingleMoleculeFootprinting)
-source("./scripts/functions/utils.r")
-source("./scripts/functions/source_FootprintCharter_functions.r")
-source("./scripts/functions/IGV_plotting.R")
+source("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/TF-chromatin/scripts/functions/utils.r")
+source("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/TF-chromatin/scripts/functions/source_FootprintCharter_functions.r")
+source("/g/krebs/barzaghi/analyses/31.01.23_GenVar_figures/TF-chromatin/scripts/functions/IGV_plotting.r")
 detach("package:plyranges")
 
 chromHMM = Load.chromHMM(GenomicTiles = TRUE)
@@ -29,7 +29,8 @@ CA_loci_df_f1 = qs::qread("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influen
   ) %>%
   mutate(TF = ifelse(ChIP_annotation == "unbound", "unbound", TF))
 
-CA_loci_df_dTAG = qs::qread("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/2025-02-24_chromatin.influence_Sox2_dTAG_run2_run3_PooledReps.df.qs") %>%
+# CA_loci_df_dTAG = qs::qread("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/2025-02-24_chromatin.influence_Sox2_dTAG_run2_run3_PooledReps.df.qs") %>%
+CA_loci_df_dTAG = qs::qread("/g/krebs/barzaghi/analyses/17.02.23_chromatin_influence/2025-09-05_chromatin.influence_Sox2_dTAG_2h_24h_PooledReps.df.qs") %>%
   process.CA.df(x = ., cre.annotation = chromHMM, chip.thr = ChIP_thresholds_dictionary_lenient) %>%
   filter(
     (TF == "Rest" & ChIP_annotation %in% c("bound") & chromHMM_annotation == "repressed") |
@@ -150,20 +151,20 @@ CA_loci_df_dTAG %>%
   filter(TF == "Sox2", ChIP_annotation == "bound") %>%
   dplyr::select(-c(chromHMM_annotation, ChIP_annotation, tot.read.count, width, CA, CA_regulatory_count, width_regulatory)) %>%
   spread(Sample, CA_regulatory) %>%
-  dplyr::rename("untreated" = "Sox2_NT", "2h dTAG" = "Sox2_2h") %>%
+  dplyr::rename("untreated_2h" = "Sox2_2h_NT", "2h dTAG" = "Sox2_2h_T", "untreated_24h" = "Sox2_24h_NT", "24h dTAG" = "Sox2_24h_T") %>%
   na.omit() %>%
-  mutate(delta = `2h dTAG` - untreated) %>%
-  arrange(untreated) %>%
+  # mutate(delta = `2h dTAG` - untreated) %>%
+  arrange(untreated_2h) %>%
   mutate(rank = seq(nrow(.))) -> pl.df
 pl.df %>%
-  dplyr::select(rank, untreated, `2h dTAG`) %>%
-  gather(treatment, CA, untreated, `2h dTAG`) %>%
+  dplyr::select(rank, untreated_2h, untreated_24h, `2h dTAG`, `24h dTAG`) %>%
+  gather(treatment, CA, untreated_2h, untreated_24h, `2h dTAG`, `24h dTAG`) %>%
   ggplot(aes(rank, CA, color = treatment)) +
   geom_point(size = .25, alpha = .1) +
   geom_smooth(method = "gam") +
   annotate("rect", xmin = -Inf, xmax = Inf, ymin = -Inf, ymax = inactive.median, fill = viridis::mako(n=1)[1], alpha = .25) +
   xlab("motifs rank by untreated CA frequency") + ylab("CA frequency (%)") +
-  scale_color_manual(values = c("black", "salmon"), breaks = c("untreated", "2h dTAG")) +
+  # scale_color_manual(values = c("black", "salmon"), breaks = c("untreated", "2h dTAG")) +
   scale_x_continuous(breaks = c(0,nrow(pl.df)), limits = c(0,nrow(pl.df))) +
   scale_y_continuous(breaks = c(0,inactive.median,50,100), limits = c(0,100)) + 
   theme_bw() +
@@ -181,15 +182,24 @@ CA_loci_df_dTAG %>%
   filter(nr.sox2 == 0 | TF == "Sox2") %>%
   dplyr::select(Sample, TF, TF.name, nr.sox2, CA_regulatory) %>%
   dplyr::rename(frequency = CA_regulatory) %>%
-  mutate(Sample = factor(ifelse(Sample == "Sox2_2h", "2h dTAG", "untreated"), levels = c("untreated", "2h dTAG"))) %>%
+  mutate(Sample = factor(case_when(
+    Sample == "Sox2_2h_NT" ~ "untreated_2h", 
+    Sample == "Sox2_2h_T" ~ "2h dTAG", 
+    Sample == "Sox2_24h_NT" ~ "untreated_24h", 
+    Sample == "Sox2_24h_T" ~ "24h dTAG"
+  ), levels = c("untreated_2h", "2h dTAG", "untreated_24h", "24h dTAG")
+  )) %>%
   group_by(nr.sox2, Sample) %>% filter(n() > 100) %>% ungroup() %>%
   spread(Sample, frequency) %>%
-  mutate(delta = `2h dTAG` - untreated) %>%
-  dplyr::select(-untreated, -`2h dTAG`) -> pl.df
+  mutate(delta_2h = `2h dTAG` - untreated_2h, delta_24h = `24h dTAG` - untreated_24h) %>%
+  dplyr::select(-untreated_2h, -`2h dTAG`, -untreated_24h, -`24h dTAG`) %>%
+  gather(time, delta, delta_2h, delta_24h) %>%
+  mutate(time = factor(ifelse(time == "delta_2h", "2h", "24h"), levels = c("2h", "24h"))) -> pl.df
 pl.df %>%
   ggplot(aes(nr.sox2, delta, fill = nr.sox2)) +
   geom_boxplot(outlier.shape = NA) +
   ggpubr::stat_compare_means(method = "wilcox", comparisons = list(c("0", "1"), c("1", "2")), label = "p.signif", label.y = c(14,21), tip.length = 0) +
+  facet_wrap(~time, ncol = 2) +
   scale_fill_manual(values = colorspace::sequential_hcl(n = 7, palette = "Blues3", rev = TRUE)[c(3,5,7)], breaks = 0:2) +
   ylab("CA frequency % (2h - untreated)") + xlab("Nr Sox2 motifs") +
   scale_y_continuous(breaks = c(-25,0,25), limits = c(-40,40)) +

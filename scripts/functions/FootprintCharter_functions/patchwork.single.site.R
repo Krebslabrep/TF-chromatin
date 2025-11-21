@@ -36,6 +36,9 @@ Load.data = function(data.type = NULL, pool.replicates = FALSE){
     } else if (data.type == "PRA_mutant_amplicon"){
       if(pool.replicates){sampleSheet <<- "/g/krebs/barzaghi/analyses/08.02.24_RMCE_mutants/samplesheet_merged.txt"}
       else if (!pool.replicates){sampleSheet <<- "/g/krebs/barzaghi/analyses/08.02.24_RMCE_mutants/samplesheet.txt"}
+    } else if (data.type == "PRA_mutant_amplicon_2"){
+      if(pool.replicates){sampleSheet <<- "/g/krebs/barzaghi/HTS/SMF/MM/2025-10-09-SC2116592-SC3/qinput_pra_mut.txt"}
+      else if (!pool.replicates){stop("We didn't make this one")}
     } else if (data.type == "Nrf1_dosage_amplicon"){
       if(pool.replicates){stop("We didn't make this one")}
       else if (!pool.replicates){sampleSheet <<- "/g/krebs/oefelein/amplicon_SMF/analysis/Qinput_withRef_conditions.txt"}
@@ -45,7 +48,7 @@ Load.data = function(data.type = NULL, pool.replicates = FALSE){
   if(isEmpty(grep("^MySamples$", current.variables))){
     if(data.type %in% c("F1_bait.capture", "Sox2_kd_bait.capture", "Oct4_kd_bait.capture")){
       MySamples <<- list(NO = grep("NO", readr::read_delim(sampleSheet, "\t")$SampleName, value = TRUE) %>% unique(), DE = grep("DE", readr::read_delim(sampleSheet, "\t")$SampleName, value = TRUE) %>% unique())
-    } else if (data.type %in% c("F1_amplicon", "WT_bait.capture", "WT_amplicon", "Nrf1_kd_amplicon", "remodeller_bait.capture", "PRA_amplicon", "PRA_mutant_amplicon", "Nrf1_dosage_amplicon")){
+    } else if (data.type %in% c("F1_amplicon", "WT_bait.capture", "WT_amplicon", "Nrf1_kd_amplicon", "remodeller_bait.capture", "PRA_amplicon", "PRA_mutant_amplicon", "PRA_mutant_amplicon_2", "Nrf1_dosage_amplicon")){
       MySamples <<- list(NO = NULL, DE = readr::read_delim(sampleSheet, delim = "\t", col_names = TRUE)$SampleName %>% unique())
     } else if (data.type == "Rest_ko_amplicon"){
       MySamples <<- list(NO = readr::read_delim(sampleSheet, delim = "\t", col_names = TRUE)$SampleName %>% unique(), DE = NULL)
@@ -55,6 +58,12 @@ Load.data = function(data.type = NULL, pool.replicates = FALSE){
     if(data.type == "PRA_mutant_amplicon"){
       message("loading TFBSs")
       TFBSs <<- qs::qread("/g/krebs/barzaghi/analyses/08.02.24_RMCE_mutants/TFBSs.qs")
+    } else if (data.type == "PRA_mutant_amplicon_2"){
+      message("loading TFBSs")
+      TFBSs <<- qs::qread("/g/krebs/barzaghi/HTS/SMF/MM/2025-10-09-SC2116592-SC3/TFBSs_pra_mut.qs")
+      TFBSs$BL6.absScore = 20
+      TFBSs$Cast.delta.pwm = NA
+      TFBSs$Spret.delta.pwm = NA
     } else {
       message("loading TFBSs")
       TFBSs <<- Load.TFBSs(kind = "Barzaghi", GenVar.info = "GenVarChange")
@@ -66,7 +75,7 @@ Load.data = function(data.type = NULL, pool.replicates = FALSE){
     if(isEmpty(grep("^CytosinesToMask$", current.variables))){
       message("loading CytosinesToMask")
       CytosinesToMask <<- Load.CytosinesToMask()}
-  } else if (data.type %in% c("WT_bait.capture", "WT_amplicon", "Rest_ko_amplicon", "Nrf1_kd_amplicon", "Sox2_kd_bait.capture", "Oct4_kd_bait.capture", "remodeller_bait.capture", "PRA_amplicon", "PRA_mutant_amplicon", "Nrf1_dosage_amplicon")){
+  } else if (data.type %in% c("WT_bait.capture", "WT_amplicon", "Rest_ko_amplicon", "Nrf1_kd_amplicon", "Sox2_kd_bait.capture", "Oct4_kd_bait.capture", "remodeller_bait.capture", "PRA_amplicon", "PRA_mutant_amplicon", "PRA_mutant_amplicon_2", "Nrf1_dosage_amplicon")){
       SNPs <<- NULL
       CytosinesToMask <<- NULL
     }
@@ -86,6 +95,8 @@ Load.data = function(data.type = NULL, pool.replicates = FALSE){
       GenomicTiles <<- qs::qread("/g/krebs/barzaghi/analyses/05.04.23_Unsupervised_on_PRA/CRE_autonomy_final_ranges.qs")
     } else if (data.type == "PRA_mutant_amplicon"){
       GenomicTiles <<- qs::qread("/g/krebs/barzaghi/analyses/08.02.24_RMCE_mutants/MutantsBatch1VB_ranges.qs")
+    } else if (data.type == "PRA_mutant_amplicon_2"){
+      GenomicTiles <<- qs::qread("/g/krebs/barzaghi/HTS/SMF/MM/2025-10-09-SC2116592-SC3/GenomicTiles_pra_mut.qs")
     } else if (data.type == "Nrf1_dosage_amplicon"){
       GenomicTiles <<- readRDS("/g/krebs/oefelein/CRE_selection/data/amplicons/final_plate1/FINAL_RANGES_W_CONTROLS.rds")
     }
@@ -94,7 +105,7 @@ Load.data = function(data.type = NULL, pool.replicates = FALSE){
 }
 
 plotting.color.assignment = function(current.sample){
-  if(current.sample %in% c("SMF_MM_TKO_DE_", "Rest_ko", "amplicon_DE_data", "SMF_MM_TKO_DE_ectopic", "MUT_DE_") | grepl("MUTR[1-3][a-c]", current.sample)){
+  if(current.sample %in% c("SMF_MM_TKO_DE_", "Rest_ko", "amplicon_DE_data", "SMF_MM_TKO_DE_ectopic", "MUT_DE_", "SMF_MM_TKO__RMCE_MutLib2") | grepl("MUTR[1-3][a-c]", current.sample)){
     plotting.colors = "black"
   } else if(current.sample %in% c("NRF1_KD_DE_", "Sox2_kd_NO_", "Oct4_kd_NO_", "remodeller")){
     plotting.colors = c("black", "red")
@@ -255,7 +266,7 @@ patch.single.site.plots = function(
   
   Load.data(data.type = data.type, pool.replicates = pool.replicates)
   
-  if(data.type %in% c("F1_bait.capture", "WT_bait.capture", "PRA_amplicon", "PRA_mutant_amplicon", "Sox2_kd_bait.capture", "Oct4_kd_bait.capture", "remodeller_bait.capture")){
+  if(data.type %in% c("F1_bait.capture", "WT_bait.capture", "PRA_amplicon", "PRA_mutant_amplicon", "PRA_mutant_amplicon_2", "Sox2_kd_bait.capture", "Oct4_kd_bait.capture", "remodeller_bait.capture")){
     bait.capture.parameters.list$compute.pam.clustering["max.nr.reads"] = list(NULL)
     bait.capture.parameters.list$pam[["k"]] = ifelse(is.null(k), 8, k)
     bait.capture.parameters.list$output.params$plot.SW.heatmap = FALSE
@@ -282,11 +293,11 @@ patch.single.site.plots = function(
     if (length(params$PlotSingleSiteSMF$PlottingSNPs) == 0){
       params$PlotSingleSiteSMF$PlottingSNPs = NULL
     }
-  } else if (data.type %in% c("WT_bait.capture", "WT_amplicon", "Rest_ko_amplicon", "Nrf1_kd_amplicon", "Sox2_kd_bait.capture", "Oct4_kd_bait.capture", "remodeller_bait.capture", "PRA_amplicon", "PRA_mutant_amplicon", "Nrf1_dosage_amplicon")) {
+  } else if (data.type %in% c("WT_bait.capture", "WT_amplicon", "Rest_ko_amplicon", "Nrf1_kd_amplicon", "Sox2_kd_bait.capture", "Oct4_kd_bait.capture", "remodeller_bait.capture", "PRA_amplicon", "PRA_mutant_amplicon", "PRA_mutant_amplicon_2", "Nrf1_dosage_amplicon")) {
     params$PlotSingleSiteSMF$PlottingSNPs = NULL
   }
   
-  if(data.type %in% c("F1_bait.capture", "F1_amplicon", "WT_bait.capture", "remodeller_bait.capture", "WT_amplicon", "Nrf1_kd_amplicon", "PRA_amplicon", "PRA_mutant_amplicon", "Nrf1_dosage_amplicon")){
+  if(data.type %in% c("F1_bait.capture", "F1_amplicon", "WT_bait.capture", "remodeller_bait.capture", "WT_amplicon", "Nrf1_kd_amplicon", "PRA_amplicon", "PRA_mutant_amplicon", "PRA_mutant_amplicon_2", "Nrf1_dosage_amplicon")){
     footprinting.type = "DE"
   } else if (data.type %in% c("Rest_ko_amplicon", "Sox2_kd_bait.capture", "Oct4_kd_bait.capture")){
     footprinting.type = "NO"
@@ -305,7 +316,7 @@ patch.single.site.plots = function(
     SMF.plot = TRUE
   ) -> res
   
-  if(data.type != "PRA_mutant_amplicon" & isTRUE(reutrn.chromatin.influence.df)){
+  if(!data.type %in% c("PRA_mutant_amplicon", "PRA_mutant_amplicon_2") & isTRUE(reutrn.chromatin.influence.df)){
     res %>% 
       create.master.table(
         list.of.files = ., single.site.coverage.thr = 20, cores = 1, 
@@ -326,7 +337,7 @@ patch.single.site.plots = function(
     plotting.samples = names(res$read.origin)
   } else if (data.type %in% c("Sox2_kd_bait.capture", "Oct4_kd_bait.capture", "remodeller_bait.capture")){
     plotting.samples = rev(names(res$read.origin))
-  } else if (data.type %in% c("WT_amplicon", "PRA_amplicon", "PRA_mutant_amplicon", "Nrf1_dosage_amplicon")){
+  } else if (data.type %in% c("WT_amplicon", "PRA_amplicon", "PRA_mutant_amplicon", "PRA_mutant_amplicon_2", "Nrf1_dosage_amplicon")){
     plotting.samples = grep(current.sample, names(res$read.origin), value = TRUE)
   }
   res$SingleSite.plot$data %<>%
@@ -363,7 +374,7 @@ patch.single.site.plots = function(
     final.plot[[2]] = final.plot[[2]] + theme(axis.title.y = element_text(vjust = -8))
     final.plot[[5]] = final.plot[[5]] + theme(axis.title.y = element_text(vjust = -8))
     
-  } else if (data.type %in% c("WT_bait.capture", "WT_amplicon", "Rest_ko_amplicon", "PRA_amplicon", "PRA_mutant_amplicon")){
+  } else if (data.type %in% c("WT_bait.capture", "WT_amplicon", "Rest_ko_amplicon", "PRA_amplicon", "PRA_mutant_amplicon", "PRA_mutant_amplicon_2")){
     res$SingleSite.plot + SM.plots + patchwork::plot_spacer() + klee.pl + 
       patchwork::plot_layout(
         ncol = 2, 
